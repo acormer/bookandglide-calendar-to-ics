@@ -1,15 +1,18 @@
 import html
 import os
+print(dict(os.environ)) 
 import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
+print(dict(os.environ)) 
 from flask import Flask, Response, abort, request
 from icalendar import Calendar, Event
 
 load_dotenv()
+print(dict(os.environ)) 
 
 BG_EMAIL = os.environ["BG_EMAIL"]
 BG_PASSWORD = os.environ["BG_PASSWORD"]
