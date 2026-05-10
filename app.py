@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 print(dict(os.environ)) 
 from flask import Flask, Response, abort, request
@@ -19,6 +20,16 @@ BG_PASSWORD = os.environ["BG_PASSWORD"]
 CALENDAR_SECRET = os.environ.get("CALENDAR_SECRET", "")
 TZ = ZoneInfo("Europe/Paris")
 BASE_URL = "https://bookandglide.com"
+METEO_URL = "https://www.meteoalpes.fr/bulletin/alpes-du-nord/"
+FRENCH_MONTHS = {
+    "janvier": 1, "février": 2, "mars": 3, "avril": 4,
+    "mai": 5, "juin": 6, "juillet": 7, "août": 8,
+    "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12,
+}
+_DAY_HEADER = re.compile(
+    r"(Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi|Dimanche)\s+(\d+)\s+(\w+)\s+(\d{4})",
+    re.IGNORECASE,
+)
 
 app = Flask(__name__)
 _session = requests.Session()
@@ -124,6 +135,61 @@ def _build_ics(events: list[dict]) -> bytes:
         cal.add_component(ev)
 
     return cal.to_ical()
+
+
+def _fetch_weather_forecast() -> list[tuple[date, str]]:
+    r = _session.get(METEO_URL)
+    soup = BeautifulSoup(r.text, "html.parser")
+    blocks = soup.select("div.j-module.j-text")
+    full_text = "\n".join(b.get_text(separator="\n") for b in blocks)
+
+    parts = _DAY_HEADER.split(full_text)
+    results = []
+    i = 1
+    while i + 4 <= len(parts):
+        _, dd, month_fr, yyyy = parts[i], parts[i + 1], parts[i + 2], parts[i + 3]
+        body = re.sub(r"^\s*:?\s*", "", parts[i + 4])
+        body = re.sub(r"\n{3,}", "\n\n", body).strip()
+        month_num = FRENCH_MONTHS.get(month_fr.lower())
+        if month_num:
+            d = date(int(yyyy), month_num, int(dd))
+            results.append((d, body))
+        i += 5
+    return results
+
+
+def _build_meteo_ics(weather: list[tuple[date, str]]) -> bytes:
+    cal = Calendar()
+    cal.add("prodid", "-//Météo Alpes du Nord ICS//EN")
+    cal.add("version", "2.0")
+    cal.add("X-WR-CALNAME", "Météo Alpes du Nord")
+    cal.add("X-WR-TIMEZONE", "Europe/Paris")
+    cal.add("REFRESH-INTERVAL;VALUE=DURATION", "PT6H")
+
+    for day, text in weather:
+        ev = Event()
+        ev.add("summary", "Météo Alpes du Nord")
+        ev.add("dtstart", datetime(day.year, day.month, day.day, 6, 0, tzinfo=TZ))
+        ev.add("dtend",   datetime(day.year, day.month, day.day, 7, 0, tzinfo=TZ))
+        ev.add("description", text)
+        ev.add("dtstamp", datetime.now(tz=TZ))
+        ev["uid"] = f"meteo-{day.isoformat()}@meteoalpes.fr"
+        cal.add_component(ev)
+
+    return cal.to_ical()
+
+
+@app.route("/meteo.ics")
+def meteo_ics():
+    if CALENDAR_SECRET and request.args.get("token") != CALENDAR_SECRET:
+        abort(403)
+
+    weather = _fetch_weather_forecast()
+    return Response(
+        _build_meteo_ics(weather),
+        mimetype="text/calendar",
+        headers={"Content-Disposition": "inline; filename=meteo.ics"},
+    )
 
 
 @app.route("/calendar.ics")
