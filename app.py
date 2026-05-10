@@ -88,6 +88,20 @@ def _strip_html(text: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", text)).strip()
 
 
+def _is_red_or_rose(color: str) -> bool:
+    color = color.strip().lstrip("#")
+    if len(color) == 3:
+        color = color[0]*2 + color[1]*2 + color[2]*2
+    if len(color) != 6:
+        return False
+    try:
+        r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
+    except ValueError:
+        return False
+    # Red is dominant channel, green is not too high (excludes orange), blue < green or blue under threshold
+    return r > 150 and r > g and g < 150 and (b < 150 or b > g)
+
+
 def _build_ics(events: list[dict]) -> bytes:
     cal = Calendar()
     cal.add("prodid", "-//BookAndGlide ICS//EN")
@@ -98,7 +112,11 @@ def _build_ics(events: list[dict]) -> bytes:
 
     for e in events:
         ev = Event()
-        ev.add("summary", _strip_html(e["title"]))
+        title = _strip_html(e["title"])
+        event_color = e.get("color") or e.get("backgroundColor") or ""
+        if event_color and _is_red_or_rose(event_color):
+            title = f"ANNULE {title}"
+        ev.add("summary", title)
         ev.add("dtstart", datetime.strptime(e["start"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=TZ))
         ev.add("dtend",   datetime.strptime(e["end"],   "%Y-%m-%d %H:%M:%S").replace(tzinfo=TZ))
         ev.add("dtstamp", datetime.now(tz=TZ))
