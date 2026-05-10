@@ -2,3 +2,4 @@ flask
 requests
 icalendar
 python-dotenv
+beautifulsoup4
