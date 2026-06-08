@@ -26,7 +26,7 @@ export function buildCalendarIcs(events: BgEvent[]): string {
 
   // Hint to calendar clients: refresh every hour
   cal.x([{ key: 'X-WR-TIMEZONE', value: TZ }]);
-  cal.x([{ key: 'REFRESH-INTERVAL;VALUE=DURATION', value: 'PT1H' }]);
+  cal.x([{ key: 'X-PUBLISHED-TTL', value: 'PT1H' }]);
 
   const now = DateTime.now().setZone(TZ).toJSDate();
 
