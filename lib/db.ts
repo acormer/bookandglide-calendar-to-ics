@@ -1,6 +1,5 @@
-import { neon } from '@neondatabase/serverless';
-import { Kysely } from 'kysely';
-import { NeonDialect } from 'kysely-neon';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
 
 // Tables managed by Better Auth
 interface UserTable {
@@ -79,8 +78,8 @@ let _db: Kysely<Database> | null = null;
 export function getDb(): Kysely<Database> {
   if (!_db) {
     _db = new Kysely<Database>({
-      dialect: new NeonDialect({
-        neon: neon(process.env.DATABASE_URL!),
+      dialect: new PostgresDialect({
+        pool: new Pool({ connectionString: process.env.DATABASE_URL }),
       }),
     });
   }
