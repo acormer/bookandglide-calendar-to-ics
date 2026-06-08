@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect } from 'kysely';
+import { CamelCasePlugin, Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
 
 // Tables managed by Better Auth
@@ -81,12 +81,16 @@ export function getDb(): Kysely<Database> {
       dialect: new PostgresDialect({
         pool: new Pool({ connectionString: process.env.DATABASE_URL }),
       }),
+      plugins: [new CamelCasePlugin()],
     });
   }
   return _db;
 }
 
-// Keep named export for convenience but lazily initialized
 export const db = new Proxy({} as Kysely<Database>, {
-  get: (_, prop) => getDb()[prop as keyof Kysely<Database>],
+  get: (_, prop) => {
+    const instance = getDb();
+    const value = instance[prop as keyof Kysely<Database>];
+    return typeof value === 'function' ? (value as Function).bind(instance) : value;
+  },
 });
