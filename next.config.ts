@@ -1,13 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: [
-    'better-auth',
-    'kysely',
-    'kysely-neon',
-    '@neondatabase/serverless',
-    'pg',
-  ],
+  serverExternalPackages: ['better-auth', 'kysely', 'pg'],
 };
 
 export default nextConfig;
