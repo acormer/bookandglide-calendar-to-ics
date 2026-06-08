@@ -1,45 +1,44 @@
-# CLAUDE.md
+@AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# BookAndGlide Calendar — Next.js Architecture
 
-## What this is
+## Stack
+- **Next.js 16.2.7** (App Router, TypeScript) — build with `next build --webpack` (Turbopack disabled, see below)
+- **Better Auth** (email + password) with `pg.Pool` for DB connection
+- **Neon PostgreSQL** via `@neondatabase/serverless` + `kysely-neon` + `Kysely`
+- **`ical-generator` v11** for ICS generation (field is `id`, not `uid`)
+- **`node-html-parser`** for meteo scraping
+- **`luxon`** for timezone-aware date handling (Europe/Paris)
 
-A single-file Flask server (`app.py`) that exposes two ICS calendar endpoints:
+## Why `--webpack` (not Turbopack)
+`@better-auth/kysely-adapter` imports `DEFAULT_MIGRATION_TABLE` from `kysely` main module, which was moved to `kysely/migration` in v0.28+. Turbopack's static analyzer fails on this; webpack handles it gracefully. Always use `npm run build` (which passes `--webpack`).
 
-- `GET /calendar.ics` — scrapes BookAndGlide's private admin calendar API and returns tandem flight events as an ICS feed.
-- `GET /meteo.ics` — scrapes meteoalpes.fr and returns a 6-day Alpine weather forecast as an ICS feed (one all-day event per day at 06:00–07:00 Europe/Paris).
+## Lazy initialization pattern
+Both `db` (Kysely) and `auth` (Better Auth) are wrapped in a JavaScript Proxy so they only initialize on first property access — this avoids build-time DB connection errors since `DATABASE_URL` is not available at build time.
 
-Both endpoints accept an optional `?token=<CALENDAR_SECRET>` query param for simple access control.
+## Stateless scraping
+Vercel serverless functions have no shared memory. BookAndGlide session cookie is re-fetched on every request (fresh login → fetch events). This costs ~3 HTTP calls per ICS request but keeps the implementation simple.
 
-## Running
+## ICS token auth
+Per-user tokens are stored in the `user_tokens` DB table. ICS endpoints accept `?token=<value>` so calendar clients (Google Calendar, Apple Calendar) can subscribe without cookie auth. The old global `CALENDAR_SECRET` env var is still supported as a fallback.
 
-```bash
-pip install -r requirements.txt
-cp .env.example .env  # then fill in credentials
-python app.py         # runs on PORT (default 5000)
-```
-
-For production use a WSGI runner: `gunicorn app:app`.
+## Key files
+- `lib/bookandglide.ts` — login + event fetch logic (manual cookie parsing)
+- `lib/meteo.ts` — meteoalpes.fr scraper (regex split on French day headers)
+- `lib/ics.ts` — ICS builders using `ical-generator`
+- `lib/db.ts` — lazy Kysely + NeonDialect proxy
+- `lib/auth.ts` — lazy Better Auth with pg.Pool proxy
+- `lib/auth-client.ts` — `'use client'` Better Auth React client
+- `middleware.ts` — protects all routes except `/api/auth`, ICS endpoints, `/login`
+- `db/migrations.sql` — `user_tokens` and `feed_status` tables (run after Better Auth core migration)
 
 ## Environment variables
-
-| Variable | Required | Purpose |
-|---|---|---|
-| `BG_EMAIL` | yes | BookAndGlide admin login email |
-| `BG_PASSWORD` | yes | BookAndGlide admin login password |
-| `CALENDAR_SECRET` | no | Token required in `?token=` to access endpoints |
-| `PORT` | no | HTTP port (default 5000) |
-
-## Architecture
-
-Everything lives in `app.py`. Key design decisions:
-
-**Session reuse with lazy re-login.** A single `requests.Session` (`_session`) is kept alive across requests. `_fetch_events()` first tries the API; if the response isn't JSON (session expired), it calls `_login()` and retries once. Login extracts a CSRF token from the HTML form via regex before POSTing credentials.
-
-**BookAndGlide calendar API.** The endpoint is `/admin/tandems/calendar` and requires `X-Requested-With: XMLHttpRequest`. It returns a 2-week window (current Monday → Monday+2). Only events with `"type": "tandem"` are kept.
-
-**Meteo scraping.** The page at `METEO_URL` contains `div.j-module.j-text` blocks with free-form French text. The parser splits on day-header lines (e.g. "Lundi 26 mai 2025") using `_DAY_HEADER` regex, then pairs each header with the following text block.
-
-**No caching, no background jobs.** Each HTTP request triggers a live scrape. The ICS feeds themselves advertise refresh intervals (`REFRESH-INTERVAL`) so calendar clients know how often to poll.
-
-**Timezone.** All datetimes use `Europe/Paris` via `zoneinfo.ZoneInfo`. The `_fmt_date` helper serializes dates with explicit UTC offset for the BookAndGlide API query params.
+```
+BG_EMAIL=              # BookAndGlide admin email
+BG_PASSWORD=           # BookAndGlide admin password
+CALENDAR_SECRET=       # optional global fallback token
+DATABASE_URL=          # Neon PostgreSQL connection string
+BETTER_AUTH_SECRET=    # openssl rand -base64 32
+BETTER_AUTH_URL=       # https://your-app.vercel.app
+NEXT_PUBLIC_APP_URL=   # https://your-app.vercel.app
+```
