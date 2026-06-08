@@ -16,4 +16,8 @@ export const auth: Auth = new Proxy({} as Auth, {
     if (!_auth) _auth = getAuth();
     return _auth[prop as keyof Auth];
   },
+  has: (_, prop) => {
+    if (!_auth) _auth = getAuth();
+    return prop in _auth;
+  },
 });
