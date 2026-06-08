@@ -67,10 +67,10 @@ async function login(): Promise<string> {
   const body = new URLSearchParams({
     'user_login[email]': process.env.BG_EMAIL!,
     'user_login[password]': process.env.BG_PASSWORD!,
-    'user_login[submit]': '',
     'user_login[_token]': valueMatch[1],
   });
 
+  // redirect: manual so we capture Set-Cookie from the 302 before it's followed
   const postResp = await fetch(`${BASE_URL}/admin/login`, {
     method: 'POST',
     headers: {
@@ -82,10 +82,11 @@ async function login(): Promise<string> {
       Cookie: cookieHeader(cookies),
     },
     body: body.toString(),
-    redirect: 'follow',
+    redirect: 'manual',
   });
 
-  if (new URL(postResp.url).pathname.includes('/admin/login')) {
+  const location = postResp.headers.get('location') ?? '';
+  if (postResp.status !== 302 || location.includes('/admin/login')) {
     throw new Error('Login failed — check BG_EMAIL / BG_PASSWORD');
   }
 
