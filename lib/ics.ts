@@ -29,11 +29,11 @@ export function buildCalendarIcs(events: BgEvent[]): string {
   cal.x([{ key: 'X-WR-TIMEZONE', value: TZ }]);
   cal.x([{ key: 'X-PUBLISHED-TTL', value: 'PT1H' }]);
 
-  const now = DateTime.now().setZone(TZ).toJSDate();
+  const now = DateTime.now().setZone(TZ);
 
   for (const e of events) {
-    const start = DateTime.fromFormat(e.start, 'yyyy-MM-dd HH:mm:ss', { zone: TZ }).toJSDate();
-    const end = DateTime.fromFormat(e.end, 'yyyy-MM-dd HH:mm:ss', { zone: TZ }).toJSDate();
+    const start = DateTime.fromFormat(e.start, 'yyyy-MM-dd HH:mm:ss', { zone: TZ });
+    const end = DateTime.fromFormat(e.end, 'yyyy-MM-dd HH:mm:ss', { zone: TZ });
 
     cal.createEvent({
       id: `${e.id}@bookandglide.com`,
@@ -58,12 +58,12 @@ export function buildMeteoIcs(forecast: ForecastDay[]): string {
   cal.x([{ key: 'X-WR-TIMEZONE', value: TZ }]);
   cal.x([{ key: 'REFRESH-INTERVAL;VALUE=DURATION', value: 'PT6H' }]);
 
-  const now = DateTime.now().setZone(TZ).toJSDate();
+  const now = DateTime.now().setZone(TZ);
 
   for (const { date, text } of forecast) {
     const dt = DateTime.fromJSDate(date).setZone(TZ);
-    const start = dt.set({ hour: 6, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-    const end = dt.set({ hour: 7, minute: 0, second: 0, millisecond: 0 }).toJSDate();
+    const start = dt.set({ hour: 6, minute: 0, second: 0, millisecond: 0 });
+    const end = dt.set({ hour: 7, minute: 0, second: 0, millisecond: 0 });
     const isoDate = dt.toISODate()!;
 
     cal.createEvent({
