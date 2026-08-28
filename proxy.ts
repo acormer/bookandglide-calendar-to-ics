@@ -5,6 +5,7 @@ const PUBLIC_PATHS = [
   '/api/calendar.ics',
   '/api/meteo.ics',
   '/login',
+  '/signup',
 ];
 
 export function proxy(req: NextRequest) {
