@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,10 +17,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error: authError } = await authClient.signIn.email({ email, password });
+    const { error: authError } = await authClient.signUp.email({ name, email, password });
     setLoading(false);
     if (authError) {
-      setError(authError.message ?? 'Login failed');
+      setError(authError.message ?? 'Sign up failed');
     } else {
       router.push('/dashboard');
     }
@@ -28,8 +29,21 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow p-8 space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Sign in</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Create an account</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name">
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
               Email
@@ -51,6 +65,7 @@ export default function LoginPage() {
               id="password"
               type="password"
               required
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -62,13 +77,13 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Creating account…' : 'Sign up'}
           </button>
         </form>
         <p className="text-sm text-gray-500 text-center">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-blue-600 hover:underline">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/login" className="text-blue-600 hover:underline">
+            Sign in
           </Link>
         </p>
       </div>
