@@ -1,5 +1,6 @@
 import { CamelCasePlugin, Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
+import { getPgSsl } from './pg-ssl';
 
 // Tables managed by Better Auth
 interface UserTable {
@@ -79,7 +80,10 @@ export function getDb(): Kysely<Database> {
   if (!_db) {
     _db = new Kysely<Database>({
       dialect: new PostgresDialect({
-        pool: new Pool({ connectionString: process.env.DATABASE_URL }),
+        pool: new Pool({
+          connectionString: process.env.DATABASE_URL,
+          ssl: getPgSsl(process.env.DATABASE_URL),
+        }),
       }),
       plugins: [new CamelCasePlugin()],
     });

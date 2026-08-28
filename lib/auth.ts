@@ -1,9 +1,13 @@
 import { betterAuth } from 'better-auth';
 import { Pool } from 'pg';
+import { getPgSsl } from './pg-ssl';
 
 function getAuth() {
   return betterAuth({
-    database: new Pool({ connectionString: process.env.DATABASE_URL }),
+    database: new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: getPgSsl(process.env.DATABASE_URL),
+    }),
     emailAndPassword: { enabled: true },
   });
 }
