@@ -1,4 +1,5 @@
 import ical from 'ical-generator';
+import { getVtimezoneComponent } from '@touch4it/ical-timezones';
 import { DateTime } from 'luxon';
 import type { BgEvent } from './bookandglide';
 import type { ForecastDay } from './meteo';
@@ -21,7 +22,7 @@ export function buildCalendarIcs(events: BgEvent[]): string {
   const cal = ical({
     prodId: '-//BookAndGlide ICS//EN',
     name: 'BookAndGlide Tandems',
-    timezone: TZ,
+    timezone: { name: TZ, generator: getVtimezoneComponent },
   });
 
   // Hint to calendar clients: refresh every hour
@@ -51,7 +52,7 @@ export function buildMeteoIcs(forecast: ForecastDay[]): string {
   const cal = ical({
     prodId: '-//Météo Alpes du Nord ICS//EN',
     name: 'Météo Alpes du Nord',
-    timezone: TZ,
+    timezone: { name: TZ, generator: getVtimezoneComponent },
   });
 
   cal.x([{ key: 'X-WR-TIMEZONE', value: TZ }]);
